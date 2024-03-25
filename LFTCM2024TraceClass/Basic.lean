@@ -13,8 +13,11 @@ variable (𝕜 E : Type*) [IsROrC 𝕜] [NormedAddCommGroup E] [CompleteSpace E]
 
 def stdHilbertIndex := Classical.choose (exists_hilbertBasis 𝕜 E)
 
-def stdHilbertBasis : HilbertBasis (stdHilbertIndex 𝕜 E) 𝕜 E
-  := Classical.choose (Classical.choose_spec <| exists_hilbertBasis 𝕜 E)
+lemma stdHilbertIndex_spec : ∃ (b : HilbertBasis (stdHilbertIndex 𝕜 E) 𝕜 E), b = ((↑) : stdHilbertIndex 𝕜 E → E) :=
+  Classical.choose_spec <| exists_hilbertBasis 𝕜 E
+
+def stdHilbertBasis : HilbertBasis (stdHilbertIndex 𝕜 E) 𝕜 E :=
+  Classical.choose <| stdHilbertIndex_spec 𝕜 E
 
 local notation "⟪" x ", " y "⟫" => @inner 𝕜 _ _ x y
 
