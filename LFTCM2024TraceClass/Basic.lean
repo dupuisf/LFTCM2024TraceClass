@@ -39,29 +39,36 @@ lemma trace_adjoint_eq_star_trace (f : E →L[𝕜] E) :
   refine (star_tsum 𝕜 ?_).symm
   done
 
-lemma bla0 (a b : 𝕜) : (starRingEnd 𝕜) a * b = (starRingEnd 𝕜) (a * (starRingEnd 𝕜) b) := by
-  simp only [map_mul, RingHomCompTriple.comp_apply, RingHom.id_apply]
-
-lemma bla1 (f : E →L[𝕜] E) (xa xb : E) :
-  ⟪ f xb, xa ⟫ * ⟪ xa, xb ⟫ = (starRingEnd 𝕜) (⟪ (adjoint f) xa, xb ⟫ * ⟪ xb, xa ⟫) := by
-  rw [adjoint_inner_left]
-  rw [← inner_conj_symm]
-  rw [← inner_conj_symm xb]
-  apply bla0
-  done
+lemma trace_basis_eq_trace_basis (f : E →L[𝕜] E)
+  {ι1 ι2 : Type*} (B1 : HilbertBasis ι1 𝕜 E) (B2 : HilbertBasis ι2 𝕜 E) :
+  ∑' (i : ι1), ⟪ f (B1 i), (B1 i) ⟫ = ∑' (i : ι2), ⟪ f (B2 i), (B2 i) ⟫ := by
+  conv =>
+    enter [2, 1, i]
+    rw [← HilbertBasis.tsum_inner_mul_inner B1]
+  conv =>
+    enter [1, 1, i]
+    rw [← adjoint_inner_right, ← HilbertBasis.tsum_inner_mul_inner B2]
+    conv =>
+      enter [1, i]
+      rw [adjoint_inner_right, mul_comm]
+  rw [tsum_comm]
+  rw [← summable_norm_iff]
+  rw [summable_prod_of_nonneg]
+  · constructor
+    · intro a
+      dsimp
+      rw [summable_norm_iff]
+      apply HilbertBasis.summable_inner_mul_inner
+    · dsimp
+      -- TODO
+      sorry
+  · intro x
+    apply norm_nonneg
 
 lemma trace_eq_sum_over_basis (f : E →L[𝕜] E) (ι : Type*) (b : HilbertBasis ι 𝕜 E) :
   ∑' (i : ι), ⟪ f (b i), (b i) ⟫ = trace 𝕜 E f := by
-  unfold trace
-  conv =>
-    enter [2, 1, i]
-    rw [← HilbertBasis.tsum_inner_mul_inner b]
-  rw [tsum_comm]
-  conv =>
-    enter [2, 1, b, 1, c]
-    rw [bla1]
-  simp_rw [← star_tsum 𝕜]
-
+  -- TODO: I couldn't figure out why it works above with a general second basis but not here
+  sorry
 
 end
 
