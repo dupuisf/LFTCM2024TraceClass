@@ -51,6 +51,11 @@ lemma parseval {ι : Type*} (B : HilbertBasis ι ℂ E) (x : E) : ∑' (i : ι),
     rw [← inner_conj_symm, IsROrC.norm_conj]
   apply HilbertBasis.summable_inner_mul_inner B
 
+lemma enn_parseval {ι : Type*} (B : HilbertBasis ι ℂ E) (x : E) :
+  ∑' (i : ι), (‖⟪x, B i⟫‖₊^2 : ENNReal) = (‖x‖₊^2 : ENNReal) := by
+  -- TODO: Deduce this ENNReal version of the previous one
+  sorry
+
 /- Conway's Proposition 18.1 -/
 
 /-- For a bounded operator `f` on a Hilbert space `E`, given Hilbert bases `B₁` and `B₂` of `E`,
@@ -61,9 +66,7 @@ lemma sum_diag_eq_sum_cross
   rw [sum_diag_norm, sum_cross]
   conv =>
     enter [1, 1, i₁]
-    -- TODO: This fails since we are using the ENNNorm ...
-    -- rw [← parseval B₂]
-  sorry
+    rw [← enn_parseval B₂]
 
 /- Definition of absolute value, square root, and trace -/
 
