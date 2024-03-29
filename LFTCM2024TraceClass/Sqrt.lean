@@ -151,6 +151,23 @@ lemma sqrt_sq {a : A} (ha : 0 ≤ a) : sqrt (a ^ 2) = a := by
   rw [sqrt, ← cfc_comp_pow ..]
   simp [cfc_id' ℝ≥0 a]
 
+def abs (a : A) : A := cfc (star a * a) NNReal.sqrt
+
+lemma cfc_congr_nonneg {f : ℝ≥0 → ℝ≥0} (g : ℝ≥0 → ℝ≥0) {a : A} (hfg : f = g) : cfc a f = cfc a g :=
+  cfc_congr a (fun x _ => by simp only [hfg])
+
+attribute [simp] cfc_id
+
+@[simp]
+lemma abs_of_nonneg (a : A) (ha : 0 ≤ a) : abs a = a := by
+  unfold abs
+  have h₁ : star a = a := by sorry
+  have h₂ : a * a = cfc a (fun (x : ℝ≥0) => x^2) := by sorry
+  simp only [h₁, h₂]
+  rw [← cfc_comp a NNReal.sqrt (fun x => x^2)]
+  have h₃ : (NNReal.sqrt ∘ fun x => x^2) = id := by ext; simp
+  rw [cfc_congr_nonneg id h₃, cfc_id ℝ≥0 a]
+
 end NNReal
 
 section Real
@@ -166,19 +183,18 @@ lemma nonneg_of_coe_nnreal (f : ℝ → ℝ≥0) (a : A) (hf : ContinuousOn f (s
     (ha : IsSelfAdjoint a := by cfc_tac) : 0 ≤ cfc a (f · : ℝ → ℝ) := by
   sorry
 
+
 end Real
 
 section Complex
 
-variable [Algebra ℂ A] [ContinuousFunctionalCalculus ℂ ((0 : A) ≤ ·)] [UniqueContinuousFunctionalCalculus ℂ A]
+variable [Algebra ℂ A] [ContinuousFunctionalCalculus ℂ (IsStarNormal : A → Prop)] [UniqueContinuousFunctionalCalculus ℂ A]
 
 lemma isSelfAdjoint_of_coe_real (f : ℂ → ℝ) (a : A) : IsSelfAdjoint (cfc a (f · : ℂ → ℂ)) := by
   rw [isSelfAdjoint_iff, ← cfc_star]
   exact cfc_congr a fun x _ ↦ Complex.conj_ofReal _
 
 
-
-def abs (a : A) : A := cfc a (‖·‖₊ : ℂ → ℂ)
 
 
 
