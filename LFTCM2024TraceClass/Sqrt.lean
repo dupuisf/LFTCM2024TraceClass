@@ -7,7 +7,6 @@ attribute [fun_prop] NNReal.continuous_sqrt
 
 noncomputable section
 
-namespace CFC
 
 variable {A : Type*} [PartialOrder A] [Ring A] [StarOrderedRing A] [TopologicalSpace A]
 
@@ -15,13 +14,13 @@ variable {A : Type*} [PartialOrder A] [Ring A] [StarOrderedRing A] [TopologicalS
 section OrderPreserving
 
 -- this class exists solely to get a `StarOrderedRing` instance for continuous functions `C(α, R)`.
-class _root_.ContinuousStarSqrt (R : Type*) [PartialOrder R] [NonUnitalSemiring R] [StarOrderedRing R]
+class ContinuousStarSqrt (R : Type*) [PartialOrder R] [NonUnitalSemiring R] [StarOrderedRing R]
     [TopologicalSpace R] where
   sqrt : R → R
   continuous_sqrt : ContinuousOn sqrt {x | 0 ≤ x}
   starSqrt_mul_self : ∀ x : R, 0 ≤ x → star (sqrt x) * sqrt x = x
 
-instance _root_.ContinuousMap.instStarOrderedRing {X R : Type*} [TopologicalSpace X] [PartialOrder R]
+instance ContinuousMap.instStarOrderedRing {X R : Type*} [TopologicalSpace X] [PartialOrder R]
     [NonUnitalRing R] [StarOrderedRing R] [TopologicalSpace R] [ContinuousStar R]
     [TopologicalRing R]  [ContinuousStarSqrt R] : StarOrderedRing C(X, R) :=
   StarOrderedRing.ofNonnegIff' add_le_add_left fun f ↦ by
@@ -78,31 +77,22 @@ lemma cfcHom_mono (a : A) (ha : p a) (f g : C(spectrum R a, R)) (hfg : f ≤ g) 
     cfcHom ha f ≤ cfcHom ha g :=
   OrderHomClass.mono (cfcHom ha) hfg
 
-def starOrderedRing_cfcHom_range (a : A) (ha : p a) : StarOrderedRing (cfcHom ha (R := R)).range where
-  le_iff := by
-    intro x y
-    constructor
-    · intro hxy
-      obtain ⟨f, hf : cfcHom ha f = x.1⟩ := x.2
-      obtain ⟨g, hg : cfcHom ha g = y.1⟩ := y.2
-      sorry
-    sorry
-
-lemma cfcHom_mono' (a : A) (ha : p a) (f g : C(spectrum R a, R)) (hfg : f ≤ g) :
-    cfcHom ha f ≤ cfcHom ha g ↔ f ≤ g := by
-  let e := StarAlgEquiv.ofInjective (cfcHom ha (R := R)) (cfcHom_closedEmbedding ha).injective
-  rw [← sub_nonneg, ← sub_nonneg (a := g), ← map_sub]
-  --have := map_le_map_iff e (a := f) (b := g)
-
-#exit
-
-
 lemma cfc_mono {f g : R → R} {a : A} (h : ∀ x ∈ spectrum R a, f x ≤ g x)
     (hf : ContinuousOn f (spectrum R a) := by cfc_cont_tac)
     (hg : ContinuousOn g (spectrum R a) := by cfc_cont_tac) (ha : p a := by cfc_tac) :
     cfc a f ≤ cfc a g := by
   rw [cfc_apply a f, cfc_apply a g]
   exact cfcHom_mono a ha _ _ fun x ↦ h x.1 x.2
+
+lemma CFC.nonneg_on_spectrum (f : R → R) (a : A) (h : ∀ x ∈ spectrum R a, 0 ≤ f x)
+    (hf : ContinuousOn f (spectrum R a) := by cfc_cont_tac) (ha : p a := by cfc_tac) :
+    0 ≤ cfc a f := by
+  simpa using cfc_mono h
+
+lemma CFC.nonpos_on_spectrum (f : R → R) (a : A) (h : ∀ x ∈ spectrum R a, f x ≤ 0)
+    (hf : ContinuousOn f (spectrum R a) := by cfc_cont_tac) (ha : p a := by cfc_tac) :
+    cfc a f ≤ 0 := by
+  simpa using cfc_mono h
 
 end Generic
 
@@ -116,15 +106,6 @@ lemma cfcHom_mono_nnreal (a : A) (ha : 0 ≤ a) (f g : C(spectrum ℝ≥0 a, ℝ
     StarRingHomClass.instOrderHomClass
   exact this (cfcHom ha (R := ℝ≥0)) hfg
 
-lemma cfcHom_mono_nnreal' (a : A) (ha : 0 ≤ a) (f g : C(spectrum ℝ≥0 a, ℝ≥0)) :
-    cfcHom ha f ≤ cfcHom ha g ↔ f ≤ g := by
-  rw [← sub_nonneg, ← sub_nonneg, map_sub]
-  sorry
-  --have := @OrderHomClass.mono (C(spectrum ℝ≥0 a, ℝ≥0) →⋆ₐ[ℝ≥0] A) C(spectrum ℝ≥0 a, ℝ≥0) A _ _ _
-    --StarRingHomClass.instOrderHomClass
-  --exact this (cfcHom ha (R := ℝ≥0)) hfg
-#exit
-
 lemma cfc_mono_nnreal {f g : ℝ≥0 → ℝ≥0} {a : A} (h : ∀ x ∈ spectrum ℝ≥0 a, f x ≤ g x)
     (hf : ContinuousOn f (spectrum ℝ≥0 a) := by cfc_cont_tac)
     (hg : ContinuousOn g (spectrum ℝ≥0 a) := by cfc_cont_tac) (ha : 0 ≤ a := by cfc_tac) :
@@ -136,6 +117,7 @@ end NNReal
 
 end OrderPreserving
 
+namespace CFC
 section NNReal
 
 variable [Algebra ℝ≥0 A] [ContinuousFunctionalCalculus ℝ≥0 ((0 : A) ≤ ·)] [UniqueContinuousFunctionalCalculus ℝ≥0 A]
@@ -151,57 +133,48 @@ lemma sqrt_sq {a : A} (ha : 0 ≤ a) : sqrt (a ^ 2) = a := by
   rw [sqrt, ← cfc_comp_pow ..]
   simp [cfc_id' ℝ≥0 a]
 
-def abs (a : A) : A := cfc (star a * a) NNReal.sqrt
+def abs (a : A) : A := sqrt (star a * a)
 
 lemma cfc_congr_nonneg {f : ℝ≥0 → ℝ≥0} (g : ℝ≥0 → ℝ≥0) {a : A} (hfg : f = g) : cfc a f = cfc a g :=
   cfc_congr a (fun x _ => by simp only [hfg])
 
 attribute [simp] cfc_id
 
-@[simp]
 lemma abs_of_nonneg (a : A) (ha : 0 ≤ a) : abs a = a := by
-  unfold abs
-  have h₁ : star a = a := by sorry
-  have h₂ : a * a = cfc a (fun (x : ℝ≥0) => x^2) := by sorry
-  simp only [h₁, h₂]
-  rw [← cfc_comp a NNReal.sqrt (fun x => x^2)]
-  have h₃ : (NNReal.sqrt ∘ fun x => x^2) = id := by ext; simp
-  rw [cfc_congr_nonneg id h₃, cfc_id ℝ≥0 a]
+  rw [abs, (IsSelfAdjoint.of_nonneg ha).star_eq, ← sq, sqrt_sq ha]
 
 end NNReal
 
 section Real
 
-variable [Algebra ℝ A] [ContinuousFunctionalCalculus ℝ ((0 : A) ≤ ·)] [UniqueContinuousFunctionalCalculus ℝ A]
+variable [Algebra ℝ A] [ContinuousFunctionalCalculus ℝ (IsSelfAdjoint : A → Prop)]
+variable [UniqueContinuousFunctionalCalculus ℝ A]
 
--- maybe just show that `cfc` is order preserving?
-lemma nonneg_on_spectrum_iff (f : ℝ → ℝ) (a : A) : ∀ x ∈ spectrum ℝ a, 0 ≤ f x ↔ 0 ≤ cfc a f := by
-  sorry
+attribute [fun_prop] NNReal.continuous_coe
 
--- maybe just show that `cfc` is order preserving?
-lemma nonneg_of_coe_nnreal (f : ℝ → ℝ≥0) (a : A) (hf : ContinuousOn f (spectrum ℝ a) := by cfc_cont_tac)
-    (ha : IsSelfAdjoint a := by cfc_tac) : 0 ≤ cfc a (f · : ℝ → ℝ) := by
-  sorry
+lemma nonneg_toReal (f : ℝ → ℝ≥0) (a : A) (hf : ContinuousOn f (spectrum ℝ a) := by cfc_cont_tac)
+    (ha : IsSelfAdjoint a := by cfc_tac) : 0 ≤ cfc a (f · : ℝ → ℝ) :=
+  nonneg_on_spectrum (h := fun _ _ ↦ by positivity)
 
 
 end Real
 
 section Complex
 
-variable [Algebra ℂ A] [ContinuousFunctionalCalculus ℂ (IsStarNormal : A → Prop)] [UniqueContinuousFunctionalCalculus ℂ A]
+variable [Algebra ℂ A] [ContinuousFunctionalCalculus ℂ (IsStarNormal : A → Prop)]
+variable [UniqueContinuousFunctionalCalculus ℂ A]
 
 lemma isSelfAdjoint_of_coe_real (f : ℂ → ℝ) (a : A) : IsSelfAdjoint (cfc a (f · : ℂ → ℂ)) := by
   rw [isSelfAdjoint_iff, ← cfc_star]
   exact cfc_congr a fun x _ ↦ Complex.conj_ofReal _
 
-
-
-
+open ComplexOrder in
+lemma nonneg_coe_nnreal (f : ℂ → ℝ≥0) (a : A) (hf : ContinuousOn f (spectrum ℂ a) := by cfc_cont_tac)
+    (ha : IsStarNormal a := by cfc_tac) : 0 ≤ cfc a (f · : ℂ → ℂ) :=
+  nonneg_on_spectrum (h := fun _ _ ↦ by positivity)
 
 end Complex
 
 end CFC
 
-example {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℂ H] [CompleteSpace H]
-    {f : H →L[ℂ] H} (hf : 0 ≤ f) : CFC.sqrt f ^ 2 = f :=
-  CFC.sq_sqrt hf
+end
