@@ -14,6 +14,8 @@ variable {A : Type*} [PartialOrder A] [Ring A] [StarOrderedRing A] [TopologicalS
 section OrderPreserving
 
 -- this class exists solely to get a `StarOrderedRing` instance for continuous functions `C(α, R)`.
+-- actually, the better solution is to pass the `Star` operation as a parameter to
+-- `StarOrderedRing` so that it becomes a `Prop` mixin.
 class ContinuousStarSqrt (R : Type*) [PartialOrder R] [NonUnitalSemiring R] [StarOrderedRing R]
     [TopologicalSpace R] where
   sqrt : R → R
