@@ -10,31 +10,29 @@ Could maybe be merged in `Mathlib/Analysis/InnerProductSpace/l2Space`
 
 noncomputable section
 
-variable (E : Type*) [NormedAddCommGroup E] [CompleteSpace E]
-  [InnerProductSpace ℂ E]
+variable (𝕜 E : Type*) [IsROrC 𝕜] [NormedAddCommGroup E] [CompleteSpace E]
+  [InnerProductSpace 𝕜 E]
 
-/- Standard Hilbert basis -/
+/- Standard Hilbert basis - TODO Refactor to define and use instead the cardinality of a Hilbert space -/
 
-def stdHilbertIndex := Classical.choose (exists_hilbertBasis ℂ E)
+def stdHilbertIndex := Classical.choose (exists_hilbertBasis 𝕜 E)
 
-lemma stdHilbertIndex_spec : ∃ (b : HilbertBasis (stdHilbertIndex E) ℂ E), b = ((↑) : (stdHilbertIndex E) → E) :=
-  Classical.choose_spec <| exists_hilbertBasis ℂ E
+lemma stdHilbertIndex_spec : ∃ (b : HilbertBasis (stdHilbertIndex 𝕜 E) 𝕜 E), b = ((↑) : (stdHilbertIndex 𝕜 E) → E) :=
+  Classical.choose_spec <| exists_hilbertBasis 𝕜 E
 
-def stdHilbertBasis : HilbertBasis (stdHilbertIndex E) ℂ E :=
-  Classical.choose <| stdHilbertIndex_spec E
+def stdHilbertBasis : HilbertBasis (stdHilbertIndex 𝕜 E) 𝕜 E :=
+  Classical.choose <| stdHilbertIndex_spec 𝕜 E
 
 end
 
 section
 
-variable {E : Type*} [NormedAddCommGroup E] [CompleteSpace E]
-  [InnerProductSpace ℂ E]
+variable {𝕜 E : Type*} [IsROrC 𝕜] [NormedAddCommGroup E] [CompleteSpace E]
+  [InnerProductSpace 𝕜 E]
 
-local notation "⟪" x ", " y "⟫" => @inner ℂ _ _ x y
-
-/-- Parseval identity ; should probably exist (or else be added to) the HilbertBasis file -/
-lemma parseval {ι : Type*} (B : HilbertBasis ι ℂ E) (x : E) : ∑' (i : ι), ‖⟪x, B i⟫‖^2 = ‖x‖^2 := by
-  rw [norm_sq_eq_inner (𝕜 := ℂ)]
+/-- Parseval identity -/
+lemma parseval {ι : Type*} (B : HilbertBasis ι 𝕜 E) (x : E) : ∑' (i : ι), ‖⟪x, B i⟫_𝕜‖^2 = ‖x‖^2 := by
+  rw [norm_sq_eq_inner (𝕜 := 𝕜)]
   rw [← HilbertBasis.tsum_inner_mul_inner B]
   rw [IsROrC.re_tsum]
   conv =>
@@ -44,9 +42,10 @@ lemma parseval {ι : Type*} (B : HilbertBasis ι ℂ E) (x : E) : ∑' (i : ι),
     rw [← inner_conj_symm, IsROrC.norm_conj]
   apply HilbertBasis.summable_inner_mul_inner B
 
-lemma enn_parseval {ι : Type*} (B : HilbertBasis ι ℂ E) (x : E) :
-  ∑' (i : ι), (‖⟪x, B i⟫‖₊^2 : ENNReal) = (‖x‖₊^2 : ENNReal) := by
-  -- TODO: Deduce this ENNReal version of the previous one
+/-- Parseval identity with non-negative real norms -/
+lemma parseval_nnreal {ι : Type*} (B : HilbertBasis ι 𝕜 E) (x : E) :
+  ∑' (i : ι), ‖⟪x, B i⟫_𝕜‖₊^2 = ‖x‖₊^2 := by
+  -- TODO: Deduce this NNReal version of the previous one
   sorry
 
 end

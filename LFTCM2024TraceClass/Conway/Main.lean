@@ -37,10 +37,13 @@ one has `∑ ‖f e₁‖² = ∑ ∑ |⟪f e₁, e₂⟫|²`. -/
 lemma sum_diag_eq_sum_cross
   {ι₁ ι₂ : Type*} (B₁ : HilbertBasis ι₁ ℂ E) (B₂ : HilbertBasis ι₂ ℂ E) (f : E →L[ℂ] E) :
   sum_diag_norm B₁ f = sum_cross B₁ B₂ f := by
+  have p : ∀ x : E, ∑' (i₂ : ι₂), (‖⟪x, B₂ i₂⟫_ℂ‖₊^2 : ENNReal) = (‖x‖₊^2 : ENNReal) := by
+    -- TODO: It should follow from the NNReal version of Parseval's identity
+    sorry
   rw [sum_diag_norm, sum_cross]
   conv =>
     enter [1, 1, i₁]
-    rw [← enn_parseval B₂]
+    rw [← p]
 
 /-- The NNNorm of the conjugate is the NNNorm. -/
 lemma nnnorm_conj (z : ℂ) : ‖(starRingEnd ℂ) z‖₊ = ‖z‖₊ := by
@@ -77,11 +80,11 @@ lemma IsTraceClass.mk_of_exists {ι : Type*} (B : HilbertBasis ι ℂ E)
       rw [sum_diag_norm_independent B' B (sqrt_abs f) (adjoint_sqrt_abs f)]
       exact h
 
-def trace_norm (f : E →L[ℂ] E) := sum_diag_norm (stdHilbertBasis E) (sqrt_abs f)
+def trace_norm (f : E →L[ℂ] E) := sum_diag_norm (stdHilbertBasis ℂ E) (sqrt_abs f)
 
 lemma sum_diag_eq_trace_norm {ι : Type*} (B : HilbertBasis ι ℂ E) :
   sum_diag_norm B (sqrt_abs f) = trace_norm f := by
-  exact sum_diag_norm_independent B (stdHilbertBasis E) (sqrt_abs f) (adjoint_sqrt_abs f)
+  exact sum_diag_norm_independent B (stdHilbertBasis ℂ E) (sqrt_abs f) (adjoint_sqrt_abs f)
 
 /- Hilbert-Schmidt -/
 
@@ -124,7 +127,7 @@ lemma hs_norm_adjoint (f : E →L[ℂ] E) :
 def sum_diag_inner {ι₁ : Type*} (B₁ : HilbertBasis ι₁ ℂ E) (f : E →L[ℂ] E) :=
   ∑' (i₁ : ι₁), ⟪f (B₁ i₁), B₁ i₁⟫
 
-def trace (f : E →L[ℂ] E) : ℂ := sum_diag_inner (stdHilbertBasis E) f
+def trace (f : E →L[ℂ] E) : ℂ := sum_diag_inner (stdHilbertBasis ℂ E) f
 
 theorem sum_diag_inner_eq_trace {ι₁ : Type*} (B₁ : HilbertBasis ι₁ ℂ E) (f : E →L[ℂ] E) [IsTraceClass f] :
   HasSum (fun i₁ => ⟪f (B₁ i₁), B₁ i₁⟫) (trace f) := by
