@@ -81,20 +81,24 @@ lemma cfcHom_mono (a : A) (ha : p a) (f g : C(spectrum R a, R)) (hfg : f ≤ g) 
 
 lemma cfc_mono {f g : R → R} {a : A} (h : ∀ x ∈ spectrum R a, f x ≤ g x)
     (hf : ContinuousOn f (spectrum R a) := by cfc_cont_tac)
-    (hg : ContinuousOn g (spectrum R a) := by cfc_cont_tac) (ha : p a := by cfc_tac) :
+    (hg : ContinuousOn g (spectrum R a) := by cfc_cont_tac) :
     cfc a f ≤ cfc a g := by
-  rw [cfc_apply a f, cfc_apply a g]
-  exact cfcHom_mono a ha _ _ fun x ↦ h x.1 x.2
+  by_cases ha : p a
+  · rw [cfc_apply a f, cfc_apply a g]
+    exact cfcHom_mono a ha _ _ fun x ↦ h x.1 x.2
+  · simp only [cfc_apply_of_not_predicate _ ha, le_rfl]
 
-lemma CFC.nonneg_on_spectrum (f : R → R) (a : A) (h : ∀ x ∈ spectrum R a, 0 ≤ f x)
-    (hf : ContinuousOn f (spectrum R a) := by cfc_cont_tac) (ha : p a := by cfc_tac) :
+lemma CFC.nonneg_on_spectrum (f : R → R) (a : A) (h : ∀ x ∈ spectrum R a, 0 ≤ f x) :
     0 ≤ cfc a f := by
-  simpa using cfc_mono h
+  by_cases hf : ContinuousOn f (spectrum R a)
+  · simpa using cfc_mono h
+  · simp only [cfc_apply_of_not_continuousOn _ hf, le_rfl]
 
-lemma CFC.nonpos_on_spectrum (f : R → R) (a : A) (h : ∀ x ∈ spectrum R a, f x ≤ 0)
-    (hf : ContinuousOn f (spectrum R a) := by cfc_cont_tac) (ha : p a := by cfc_tac) :
+lemma CFC.nonpos_on_spectrum (f : R → R) (a : A) (h : ∀ x ∈ spectrum R a, f x ≤ 0) :
     cfc a f ≤ 0 := by
-  simpa using cfc_mono h
+  by_cases hf : ContinuousOn f (spectrum R a)
+  · simpa using cfc_mono h
+  · simp only [cfc_apply_of_not_continuousOn _ hf, le_rfl]
 
 end Generic
 
@@ -110,10 +114,13 @@ lemma cfcHom_mono_nnreal (a : A) (ha : 0 ≤ a) (f g : C(spectrum ℝ≥0 a, ℝ
 
 lemma cfc_mono_nnreal {f g : ℝ≥0 → ℝ≥0} {a : A} (h : ∀ x ∈ spectrum ℝ≥0 a, f x ≤ g x)
     (hf : ContinuousOn f (spectrum ℝ≥0 a) := by cfc_cont_tac)
-    (hg : ContinuousOn g (spectrum ℝ≥0 a) := by cfc_cont_tac) (ha : 0 ≤ a := by cfc_tac) :
+    (hg : ContinuousOn g (spectrum ℝ≥0 a) := by cfc_cont_tac) :
     cfc a f ≤ cfc a g := by
-  rw [cfc_apply a f, cfc_apply a g]
-  exact cfcHom_mono_nnreal a ha _ _ fun x ↦ h x.1 x.2
+  by_cases ha : 0 ≤ a
+  · rw [cfc_apply a f, cfc_apply a g]
+    exact cfcHom_mono_nnreal a ha _ _ fun x ↦ h x.1 x.2
+  · simp only [cfc_apply_of_not_predicate _ ha]
+    exact le_rfl
 
 end NNReal
 
@@ -213,8 +220,7 @@ variable [UniqueContinuousFunctionalCalculus ℝ A]
 
 attribute [fun_prop] NNReal.continuous_coe
 
-lemma nonneg_toReal (f : ℝ → ℝ≥0) (a : A) (hf : ContinuousOn f (spectrum ℝ a) := by cfc_cont_tac)
-    (ha : IsSelfAdjoint a := by cfc_tac) : 0 ≤ cfc a (f · : ℝ → ℝ) :=
+lemma nonneg_toReal (f : ℝ → ℝ≥0) (a : A) : 0 ≤ cfc a (f · : ℝ → ℝ) :=
   nonneg_on_spectrum (h := fun _ _ ↦ by positivity)
 
 
@@ -230,8 +236,7 @@ lemma isSelfAdjoint_of_coe_real (f : ℂ → ℝ) (a : A) : IsSelfAdjoint (cfc a
   exact cfc_congr a fun x _ ↦ Complex.conj_ofReal _
 
 open ComplexOrder in
-lemma nonneg_coe_nnreal (f : ℂ → ℝ≥0) (a : A) (hf : ContinuousOn f (spectrum ℂ a) := by cfc_cont_tac)
-    (ha : IsStarNormal a := by cfc_tac) : 0 ≤ cfc a (f · : ℂ → ℂ) :=
+lemma nonneg_coe_nnreal (f : ℂ → ℝ≥0) (a : A) : 0 ≤ cfc a (f · : ℂ → ℂ) :=
   nonneg_on_spectrum (h := fun _ _ ↦ by positivity)
 
 end Complex
