@@ -126,24 +126,83 @@ variable [Algebra ℝ≥0 A] [ContinuousFunctionalCalculus ℝ≥0 ((0 : A) ≤ 
 
 def sqrt (a : A) : A := cfc a NNReal.sqrt
 
-lemma sq_sqrt {a : A} (ha : 0 ≤ a) : sqrt a ^ 2 = a := by
+@[simp]
+lemma sqrt_nonneg (a : A) : 0 ≤ sqrt a := by
+  by_cases h : 0 ≤ a
+  · exact cfc_predicate ..
+  · rw [sqrt, cfc_apply_of_not_predicate a h]
+
+@[simp]
+lemma isSelfAdjoint_sqrt (a : A) : IsSelfAdjoint (sqrt a) :=
+  IsSelfAdjoint.of_nonneg <| by simp
+
+-- is there some reaspon this isn't marked `simp` already?
+attribute [simp] IsSelfAdjoint.star_eq
+
+lemma star_sqrt (a : A) : star (sqrt a) = sqrt a :=
+  by simp --IsSelfAdjoint.of_nonneg <| by simp
+
+lemma sq_sqrt_of_nonneg {a : A} (ha : 0 ≤ a) : sqrt a ^ 2 = a := by
   nth_rw 2 [← cfc_id ℝ≥0 a]
   rw [sqrt, ← cfc_pow ..]
   exact cfc_congr a (fun _ _ ↦ by simp)
 
-lemma sqrt_sq {a : A} (ha : 0 ≤ a) : sqrt (a ^ 2) = a := by
+@[simp]
+lemma sq_sqrt (a : {x : A // 0 ≤ x}) : sqrt (a : A) ^ 2 = a :=
+  sq_sqrt_of_nonneg a.2
+
+lemma sqrt_sq_of_nonneg {a : A} (ha : 0 ≤ a) : sqrt (a ^ 2) = a := by
   rw [sqrt, ← cfc_comp_pow ..]
   simp [cfc_id' ℝ≥0 a]
 
+@[simp]
+lemma sqrt_sq (a : {x : A // 0 ≤ x}) : sqrt (a ^ 2 : A) = a :=
+  sqrt_sq_of_nonneg a.2
+
 def abs (a : A) : A := sqrt (star a * a)
+
+@[simp] -- maybe we don't want this as a `simp` lemma so we don't go hunting for `IsStarNormal` instances?
+lemma _root_.IsStarNormal.abs_star (a : A) [IsStarNormal a] : abs (star a) = abs a := by
+  rw [abs, abs, star_star, ← star_comm_self']
 
 lemma cfc_congr_nonneg {f : ℝ≥0 → ℝ≥0} (g : ℝ≥0 → ℝ≥0) {a : A} (hfg : f = g) : cfc a f = cfc a g :=
   cfc_congr a (fun x _ => by simp only [hfg])
 
 attribute [simp] cfc_id
 
-lemma abs_of_nonneg (a : A) (ha : 0 ≤ a) : abs a = a := by
-  rw [abs, (IsSelfAdjoint.of_nonneg ha).star_eq, ← sq, sqrt_sq ha]
+example (a : selfAdjoint A) : star (a : A) = a := by
+  exact selfAdjoint.star_val_eq
+
+@[simp]
+lemma nonneg_star_val_eq (a : {x : A // 0 ≤ x}) : star (a : A) = a :=
+  (IsSelfAdjoint.of_nonneg a.2).star_eq
+
+attribute [simp] star_mul_self_nonneg mul_star_self_nonneg
+
+@[simp]
+lemma abs_nonneg (a : A) : 0 ≤ abs a := cfc_predicate ..
+
+lemma abs_of_nonneg {a : A} (ha : 0 ≤ a) : abs a = a := by
+  lift a to {x : A // 0 ≤ x} using ha
+  simp [abs, ←sq]
+
+@[simp]
+lemma abs_val_eq (a : {x : A // 0 ≤ x}) : abs (a : A) = a :=
+  abs_of_nonneg a.2
+
+lemma abs_abs (a : A) : abs (abs a) = abs a := by
+  lift abs a to {x : A // 0 ≤ x} using (by simp) with b
+  simp
+
+lemma abs_sq (a : A) : (abs a) ^ 2 = star a * a := by
+  rw [abs, sq_sqrt_of_nonneg (by simp)]
+
+@[simp]
+lemma isSelfAdjoint_abs (a : A) : IsSelfAdjoint (abs a) :=
+  IsSelfAdjoint.of_nonneg <| abs_nonneg a
+
+lemma star_abs (a : A) : star (abs a) = abs a :=
+  isSelfAdjoint_abs a |>.star_eq
 
 end NNReal
 
