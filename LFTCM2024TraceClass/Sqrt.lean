@@ -166,6 +166,13 @@ lemma sqrt_sq_of_nonneg {a : A} (ha : 0 ≤ a) : sqrt (a ^ 2) = a := by
 lemma sqrt_sq (a : {x : A // 0 ≤ x}) : sqrt (a ^ 2 : A) = a :=
   sqrt_sq_of_nonneg a.2
 
+lemma sqrt_mul_self_of_nonneg {a : A} (ha : 0 ≤ a) : sqrt (a * a : A) = a := by
+  rw [← pow_two, sqrt_sq_of_nonneg ha]
+
+@[simp]
+lemma sqrt_mul_self (a : {x : A // 0 ≤ x}) : sqrt (a * a : A) = a :=
+  sqrt_mul_self_of_nonneg a.2
+
 def abs (a : A) : A := sqrt (star a * a)
 
 @[simp] -- maybe we don't want this as a `simp` lemma so we don't go hunting for `IsStarNormal` instances?
@@ -210,6 +217,33 @@ lemma isSelfAdjoint_abs (a : A) : IsSelfAdjoint (abs a) :=
 
 lemma star_abs (a : A) : star (abs a) = abs a :=
   isSelfAdjoint_abs a |>.star_eq
+
+-- We'll need to define positive definite elements to deal with negative powers properly
+def rpow (r : ℝ) (a : A) : A := cfc a (NNReal.rpow · r)
+
+lemma rpow_eq_pow {n : ℕ} {a : A} (ha : 0 ≤ a) : rpow n a = a ^ n := by
+  rw [rpow, ← cfc_pow_id (R := ℝ≥0) a n]
+  exact cfc_congr_nonneg _ <| by ext; simp
+
+lemma rpow_zero {a : A} (ha : 0 ≤ a): rpow 0 a = 1 := by
+  have : (0 : ℝ) = (0 : ℕ) := by simp
+  simp only [this, rpow_eq_pow ha, pow_zero]
+
+lemma rpow_one {a : A} (ha : 0 ≤ a) : rpow 1 a = a := by
+  have : (1 : ℝ) = (1 : ℕ) := by simp
+  simp only [this, rpow_eq_pow ha, pow_one]
+
+lemma sqrt_eq_rpow {a : A} : sqrt a = rpow (1/2) a := by
+  rw [rpow, sqrt]
+  refine cfc_congr_nonneg _ ?_
+  ext
+  simp only [NNReal.sqrt_eq_rpow, one_div, NNReal.rpow_eq_pow, NNReal.coe_rpow]
+
+lemma rpow_add {r₁ r₂ : ℝ} {a : A} : rpow (r₁ + r₂) a = rpow r₁ a * rpow r₂ a := by
+  sorry
+
+lemma rpow_mul {r₁ r₂ : ℝ} {a : A} : rpow r₁ (rpow r₂ a) = rpow (r₁ * r₂) a := by
+  sorry
 
 end NNReal
 
