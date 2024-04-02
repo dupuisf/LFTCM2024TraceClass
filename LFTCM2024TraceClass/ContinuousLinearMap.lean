@@ -1,7 +1,6 @@
 import Mathlib.Analysis.NormedSpace.Star.ContinuousFunctionalCalculus.Instances
 import Mathlib.Analysis.InnerProductSpace.Positive
 
-
 namespace ContinuousLinearMap
 
 section PartialOrder
@@ -22,9 +21,7 @@ instance instLoewnerPartialOrder : PartialOrder (H →L[𝕜] H) where
   le_antisymm f₁ f₂ h₁ h₂ := by
     rw [← sub_eq_zero]
     have h_isSymm := isSelfAdjoint_iff_isSymmetric.mp h₂.isSelfAdjoint
-    have := h_isSymm.inner_map_self_eq_zero.mp
-    exact_mod_cast this <| by
-      intro x
+    exact_mod_cast h_isSymm.inner_map_self_eq_zero.mp fun x ↦ by
       apply IsROrC.ext
       · rw [map_zero]
         apply le_antisymm
@@ -36,6 +33,9 @@ instance instLoewnerPartialOrder : PartialOrder (H →L[𝕜] H) where
 
 lemma le_def (f g : H →L[𝕜] H) : f ≤ g ↔ (g - f).IsPositive := Iff.rfl
 
+lemma nonneg_iff_isPositive (f : H →L[𝕜] H) : 0 ≤ f ↔ f.IsPositive := by
+  simpa using le_def 0 f
+
 end PartialOrder
 
 section Banach
@@ -43,17 +43,36 @@ section Banach
 variable {𝕜 E F : Type*} [NontriviallyNormedField 𝕜] [NormedAddCommGroup E] [NormedAddCommGroup F]
   [NormedSpace 𝕜 E] [NormedSpace 𝕜 F] [CompleteSpace E] [CompleteSpace F]
 
--- note this should be semilinearized after #11722
+open NNReal
+lemma closed_range_of_antilipschitz {f : E →L[𝕜] F} {c : ℝ≥0} (hf : AntilipschitzWith c f) :
+    (LinearMap.range f).topologicalClosure = LinearMap.range f :=
+  SetLike.ext'_iff.mpr <| (hf.isClosed_range f.uniformContinuous).closure_eq
+
+/-
+[Mathlib.Analysis.NormedSpace.Completion]
+-/
+--#find_home closed_range_of_antilipschitz
+
 open Function -- does ContinuousLinearMap.ofBijective generalize to semilinear?
-lemma bijective_iff_denseRange_and_antilipschitz (f : E →L[𝕜] F) :
-    Bijective f ↔ DenseRange f ∧ ∃ c, AntilipschitzWith c f := by
-  refine ⟨fun h ↦ ⟨h.2.denseRange, ?_⟩, fun ⟨hd, c, hf⟩ ↦ ⟨hf.injective, ?_⟩⟩
-  · have := ContinuousLinearEquiv.ofBijective f ?_ ?_ |>.antilipschitz
+lemma bijective_iff_dense_range_and_antilipschitz (f : E →L[𝕜] F) :
+    Bijective f ↔ (LinearMap.range f).topologicalClosure = ⊤ ∧ ∃ c, AntilipschitzWith c f := by
+  refine ⟨fun h ↦ ⟨?eq_top, ?anti⟩, fun ⟨hd, c, hf⟩ ↦ ⟨hf.injective, ?surj⟩⟩
+  case eq_top => simpa [SetLike.ext'_iff] using h.2.denseRange.closure_eq
+  case anti =>
+    have := ContinuousLinearEquiv.ofBijective f ?_ ?_ |>.antilipschitz
     · exact ⟨_, by simpa⟩
     all_goals simp only [LinearMap.range_eq_top, LinearMapClass.ker_eq_bot]
     exacts [h.1, h.2]
-  · rw [← Set.range_iff_surjective]
-    exact hf.isClosed_range f.uniformContinuous |>.closure_eq ▸ hd.closure_range
+  case surj => rwa [← LinearMap.range_eq_top, ← closed_range_of_antilipschitz hf]
+
+/-
+[Mathlib.Analysis.InnerProductSpace.Symmetric]
+-/
+-- #find_home! bijective_iff_denseRange_and_antilipschitz
+
+lemma _root_.AntilipschitzWith.completeSpace_range_clm {f : E →L[𝕜] F} {c : ℝ≥0}
+    (hf : AntilipschitzWith c f) : CompleteSpace (LinearMap.range f) :=
+  IsClosed.completeSpace_coe <| hf.isClosed_range f.uniformContinuous
 
 -- I guess this could also be semilinear
 lemma isUnit_iff_bijective {f : E →L[𝕜] E} : IsUnit f ↔ Bijective f := by
@@ -73,66 +92,56 @@ section IsROrC
 open IsROrC
 open scoped NNReal
 
-lemma isUnit_of_bdd_below_re_inner
+
+lemma antilipschitz_of_forall_le_inner_map
+    {𝕜 H : Type*} [IsROrC 𝕜] [NormedAddCommGroup H] [InnerProductSpace 𝕜 H] [CompleteSpace H]
+    (f : H →L[𝕜] H) {c : ℝ≥0} (hc : 0 < c)
+    (h : ∀ x, ‖x‖ ^ 2 * c ≤ ‖⟪f x, x⟫_𝕜‖) : AntilipschitzWith c⁻¹ f := by
+  let e : NormedAddGroupHom H H := AddMonoidHom.mkNormedAddGroupHom f ‖f‖ f.le_opNorm
+  apply NormedAddGroupHom.antilipschitz_of_norm_ge e fun x ↦ ?_
+  rw [NNReal.coe_inv, inv_mul_eq_div, le_div_iff (by exact_mod_cast hc)]
+  simp_rw [sq, mul_assoc] at h
+  by_cases hx0 : x = 0
+  · simp [hx0]
+  · apply (map_le_map_iff <| OrderIso.mulLeft₀ ‖x‖ (norm_pos_iff'.mpr hx0)).mp
+    simp only [OrderIso.mulLeft₀_apply]
+    apply (h x).trans
+    apply (norm_inner_le_norm _ _).trans
+    simp [mul_comm ‖x‖, e]
+
+lemma isUnit_of_forall_le_inner_map
     {𝕜 H : Type*} [IsROrC 𝕜] [NormedAddCommGroup H] [InnerProductSpace 𝕜 H] [CompleteSpace H]
     (f : H →L[𝕜] H) {c : ℝ} (hc : 0 < c)
-    (h : ∀ x, ‖x‖ ^ 2 * c ≤ re ⟪f x, x⟫_𝕜) : IsUnit f := by
-  rw [isUnit_iff_bijective, bijective_iff_denseRange_and_antilipschitz]
+    (h : ∀ x, ‖x‖ ^ 2 * c ≤ ‖⟪f x, x⟫_𝕜‖) : IsUnit f := by
+  rw [isUnit_iff_bijective, bijective_iff_dense_range_and_antilipschitz]
   lift c to ℝ≥0 using hc.le
-  have h_anti : AntilipschitzWith c⁻¹ f := by
-    let e : NormedAddGroupHom H H := AddMonoidHom.mkNormedAddGroupHom f ‖f‖ f.le_opNorm
-    apply NormedAddGroupHom.antilipschitz_of_norm_ge e fun x ↦ ?_
-    rw [NNReal.coe_inv, inv_mul_eq_div, le_div_iff hc]
-    simp_rw [sq, mul_assoc] at h
-    by_cases hx0 : x = 0
-    · simp [hx0]
-    · apply (map_le_map_iff <| OrderIso.mulLeft₀ ‖x‖ (norm_pos_iff'.mpr hx0)).mp
-      simp only [OrderIso.mulLeft₀_apply]
-      apply (h x).trans
-      apply (re_inner_le_norm _ _).trans
-      rw [mul_comm]
-      rfl
+  have h_anti : AntilipschitzWith c⁻¹ f := antilipschitz_of_forall_le_inner_map f hc h
   refine ⟨?_, ⟨_, h_anti⟩⟩
-  apply Function.Surjective.denseRange
-  rw [← LinearMap.range_eq_top]
-  by_contra h'
-  have : IsClosed (LinearMap.range f : Set H) := h_anti.isClosed_range f.uniformContinuous
-  have : CompleteSpace (LinearMap.range f) := IsClosed.completeSpace_coe this
-  rw [← Submodule.orthogonal_eq_bot_iff] at h'
-  apply h'
-  rw [Submodule.eq_bot_iff]
+  have _inst := h_anti.completeSpace_range_clm
+  rw [Submodule.topologicalClosure_eq_top_iff, Submodule.eq_bot_iff]
   intro x hx
-  specialize hx (f x) (LinearMap.mem_range_self f x)
-  specialize h x
-  simp [hx] at h
-  have : ‖x‖ ^ 2 * c = 0 := le_antisymm h (by positivity)
+  have : ‖x‖ ^ 2 * c = 0 := le_antisymm (by simpa only [hx (f x) ⟨x, rfl⟩, norm_zero] using h x)
+    (by positivity)
   aesop
 
 lemma IsPositive.spectrumRestricts
     {𝕜 H : Type*} [IsROrC 𝕜] [NormedAddCommGroup H] [InnerProductSpace 𝕜 H] [CompleteSpace H]
-    [Algebra ℝ (H →L[𝕜] H)] [IsScalarTower ℝ 𝕜 (H →L[𝕜] H)]
-    (f : H →L[𝕜] H) (hf : f.IsPositive) :
+    [Algebra ℝ (H →L[𝕜] H)] [IsScalarTower ℝ 𝕜 (H →L[𝕜] H)] (f : H →L[𝕜] H) (hf : f.IsPositive) :
     SpectrumRestricts f ContinuousMap.realToNNReal := by
   rw [SpectrumRestricts.nnreal_iff]
   intro c hc
   contrapose! hc
-  rw [spectrum.not_mem_iff, IsUnit.sub_iff]
-  have : 0 < -c := by exact neg_pos.mpr hc
-  apply isUnit_of_bdd_below_re_inner _ (neg_pos.mpr hc) fun x ↦ ?_
-  calc
-    ‖x‖ ^ 2 * -c = re ⟪- (algebraMap ℝ (H →L[𝕜] H)) c x, x⟫_𝕜 := by
-      simp only [mul_neg, inner_neg_left, map_neg, re_to_complex, neg_inj]
-      simp only [Algebra.algebraMap_eq_smul_one]
-      rw [← algebraMap_smul 𝕜 c (1 : (H →L[𝕜] H))]
-      simp only [coe_smul', Pi.smul_apply, one_apply]
-      rw [inner_smul_left]
-      simp only [mul_re, conj_re, conj_im, inner_self_im, mul_zero, sub_zero]
-      rw [inner_self_eq_norm_sq, mul_comm]
-      simp [Algebra.algebraMap_eq_smul_one, IsROrC.real_smul_eq_coe_mul]
-    _ ≤ re ⟪(f - (algebraMap ℝ (H →L[𝕜] H)) c) x, x⟫_𝕜 := by
-      simp only [inner_neg_left, map_neg, coe_sub', Pi.sub_apply, inner_sub_left, map_sub,
-        neg_le_sub_iff_le_add, le_add_iff_nonneg_left]
-      exact hf.inner_nonneg_left x
+  rw [spectrum.not_mem_iff, IsUnit.sub_iff, sub_eq_add_neg, ← map_neg]
+  rw [← neg_pos] at hc
+  set c := -c
+  exact isUnit_of_forall_le_inner_map _ hc fun x ↦ calc
+    ‖x‖ ^ 2 * c = re ⟪algebraMap ℝ (H →L[𝕜] H) c x, x⟫_𝕜 := by
+      rw [Algebra.algebraMap_eq_smul_one, ← algebraMap_smul 𝕜 c (1 : (H →L[𝕜] H)), coe_smul',
+        Pi.smul_apply, one_apply, inner_smul_left, IsROrC.algebraMap_eq_ofReal, conj_ofReal,
+        re_ofReal_mul, inner_self_eq_norm_sq, mul_comm]
+    _ ≤ re ⟪(f + (algebraMap ℝ (H →L[𝕜] H)) c) x, x⟫_𝕜 := by
+      simpa only [add_apply, inner_add_left, map_add, le_add_iff_nonneg_left] using hf.inner_nonneg_left x
+    _ ≤ ‖⟪(f + (algebraMap ℝ (H →L[𝕜] H)) c) x, x⟫_𝕜‖ := IsROrC.re_le_norm _
 
 variable {𝕜 H : Type*} [IsROrC 𝕜] [NormedAddCommGroup H] [InnerProductSpace 𝕜 H] [CompleteSpace H]
 variable [Algebra ℝ (H →L[𝕜] H)] [IsScalarTower ℝ 𝕜 (H →L[𝕜] H)]

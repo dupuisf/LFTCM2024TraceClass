@@ -139,8 +139,7 @@ lemma isSelfAdjoint_sqrt (a : A) : IsSelfAdjoint (sqrt a) :=
 -- is there some reaspon this isn't marked `simp` already?
 attribute [simp] IsSelfAdjoint.star_eq
 
-lemma star_sqrt (a : A) : star (sqrt a) = sqrt a :=
-  by simp --IsSelfAdjoint.of_nonneg <| by simp
+lemma star_sqrt (a : A) : star (sqrt a) = sqrt a := by simp
 
 lemma sq_sqrt_of_nonneg {a : A} (ha : 0 ≤ a) : sqrt a ^ 2 = a := by
   nth_rw 2 [← cfc_id ℝ≥0 a]
@@ -168,11 +167,6 @@ lemma _root_.IsStarNormal.abs_star (a : A) [IsStarNormal a] : abs (star a) = abs
 lemma cfc_congr_nonneg {f : ℝ≥0 → ℝ≥0} (g : ℝ≥0 → ℝ≥0) {a : A} (hfg : f = g) : cfc a f = cfc a g :=
   cfc_congr a (fun x _ => by simp only [hfg])
 
-attribute [simp] cfc_id
-
-example (a : selfAdjoint A) : star (a : A) = a := by
-  exact selfAdjoint.star_val_eq
-
 @[simp]
 lemma nonneg_star_val_eq (a : {x : A // 0 ≤ x}) : star (a : A) = a :=
   (IsSelfAdjoint.of_nonneg a.2).star_eq
@@ -190,6 +184,7 @@ lemma abs_of_nonneg {a : A} (ha : 0 ≤ a) : abs a = a := by
 lemma abs_val_eq (a : {x : A // 0 ≤ x}) : abs (a : A) = a :=
   abs_of_nonneg a.2
 
+@[simp]
 lemma abs_abs (a : A) : abs (abs a) = abs a := by
   lift abs a to {x : A // 0 ≤ x} using (by simp) with b
   simp
@@ -201,8 +196,32 @@ lemma abs_sq (a : A) : (abs a) ^ 2 = star a * a := by
 lemma isSelfAdjoint_abs (a : A) : IsSelfAdjoint (abs a) :=
   IsSelfAdjoint.of_nonneg <| abs_nonneg a
 
+@[simp]
 lemma star_abs (a : A) : star (abs a) = abs a :=
   isSelfAdjoint_abs a |>.star_eq
+
+lemma pow_nonneg {a : A} (ha : 0 ≤ a) (n : ℕ) : 0 ≤ a ^ n := by
+  induction n with
+  | zero => simpa using star_mul_self_nonneg (1 : A)
+  | succ n ih => sorry --exact mul_nonneg ha ih
+
+@[simp]
+lemma one_nonneg : 0 ≤ (1 : A) := by
+  simpa using star_mul_self_nonneg (1 : A)
+
+lemma sq_nonneg {a : A} (ha : IsSelfAdjoint a) : 0 ≤ a ^ 2 := by
+  simpa [ha.star_eq, sq] using star_mul_self_nonneg a
+
+lemma pow_two_mul_nonneg {a : A} (ha : IsSelfAdjoint a) (n : ℕ) : 0 ≤ a ^ (2 * n) :=
+  pow_mul a 2 n ▸ pow_nonneg (sq_nonneg ha) n
+
+attribute [aesop safe apply] conjugate_nonneg conjugate_nonneg'
+attribute [aesop unsafe 70% apply] pow_nonneg add_nonneg
+attribute [aesop unsafe 30% apply] sq_nonneg pow_two_mul_nonneg
+
+example {a b : A} (ha : IsSelfAdjoint a) (hb : 0 ≤ b) (n : ℕ) : 0 ≤ a ^ 2 + b ^ n + a ^ (2 * n) + b ^ 2 := by cfc_tac
+
+example (a b c : A) (hb : 0 ≤ 1 + b) : 0 ≤ star a * (1 + (1 + b)) ^ 2 * a + c * star c + sqrt (abs a) := by cfc_tac
 
 end NNReal
 
@@ -219,6 +238,87 @@ lemma nonneg_toReal (f : ℝ → ℝ≥0) (a : A) (hf : ContinuousOn f (spectrum
 
 
 end Real
+
+section IsROrC
+
+variable {𝕜 : Type*} [IsROrC 𝕜] {p : A → Prop} [Algebra 𝕜 A] [ContinuousFunctionalCalculus 𝕜 p]
+variable [UniqueContinuousFunctionalCalculus 𝕜 A] [TopologicalRing A] [ContinuousStar A] [StarModule 𝕜 A]
+
+open Polynomial in
+lemma _root_.Polynomial.toContinuousMapOn_X_eq_restrict_id {R : Type*} [Semiring R] [TopologicalSpace R]
+    [TopologicalSemiring R] (s : Set R) :
+    (X : R[X]).toContinuousMapOn s = .restrict s (.id R) := by
+  ext; simp
+
+variable (𝕜)
+
+theorem cfcHom_range {a : A} (ha : p a) :
+    (cfcHom ha (R := 𝕜)).range = elementalStarAlgebra 𝕜 a := by
+  have := UniqueContinuousFunctionalCalculus.compactSpace_spectrum a (R := 𝕜)
+  rw [StarAlgHom.range_eq_map_top, ← polynomialFunctions.starClosure_topologicalClosure, ←
+    StarSubalgebra.topologicalClosure_map _ _ (cfcHom_closedEmbedding ha (R := 𝕜)),
+    polynomialFunctions.starClosure_eq_adjoin_X, StarAlgHom.map_adjoin]
+  congr
+  rw [Set.image_singleton, Polynomial.toContinuousMapOnAlgHom_apply,
+    Polynomial.toContinuousMapOn_X_eq_restrict_id, cfcHom_id ha]
+
+theorem cfc_range {a : A} (ha : p a) : Set.range (cfc a (R := 𝕜)) = (cfcHom ha (R := 𝕜)).range := by
+  ext
+  constructor
+  · rintro ⟨f, rfl⟩
+    by_cases hf : ContinuousOn f (spectrum 𝕜 a)
+    · rw [cfc_apply a f, SetLike.mem_coe]
+      exact ⟨_, rfl⟩
+    · rw [cfc_apply_of_not_continuousOn a hf]
+      exact zero_mem _
+  · rintro ⟨f, rfl⟩
+    classical
+    let f' (x : 𝕜) : 𝕜 := if hx : x ∈ spectrum 𝕜 a then f ⟨x, hx⟩ else 0
+    have hff' : f = Set.restrict (spectrum 𝕜 a) f'  := by ext; simp [f']
+    have : ContinuousOn f' (spectrum 𝕜 a) := by
+      rw [continuousOn_iff_continuous_restrict]
+      exact hff' ▸ map_continuous f
+    use f'
+    rw [cfc_apply a f']
+    congr!
+    exact hff'.symm
+
+#eval 1349^2 % 1763
+#eval 385^2 % 1763
+#eval 133^2 % 1763
+#eval 59 ^ 2 % 1763
+#eval 1718^2 % 1763
+
+def digits : ℕ → List (Fin 2)
+  | 0 => []
+  | n + 1 => n % 2 :: digits (n / 2)
+
+#exit
+
+theorem induction_on (P : A → Prop) {a : A} (ha : p a) (f : C(spectrum 𝕜 a, 𝕜))
+    (self : P a) (star_self : P (star a)) (algebraMap : ∀ r : 𝕜, P (cfcHom ha (algebraMap 𝕜 C(spectrum 𝕜 a, 𝕜) r)))
+    (add : ∀ g₁ g₂ : C(spectrum 𝕜 a, 𝕜), P (cfcHom ha g₁) → P (cfcHom ha g₂) → P (cfcHom ha (g₁ + g₂)))
+    (mul : ∀ g₁ g₂ : C(spectrum 𝕜 a, 𝕜), P (cfcHom ha g₁) → P (cfcHom ha g₂) → P (cfcHom ha (g₁ * g₂) : A))
+    (closure : ∀ s : Set C(spectrum 𝕜 a, 𝕜), (∀ g ∈ s, P (cfcHom ha g)) → ∀ g' ∈ closure s, P (cfcHom ha g')) :
+    P (cfcHom ha f) := by
+
+  sorry
+
+
+#check cfc_apply
+-- the range of the continuous functional calculus is the elemental star algebra
+lemma cfc_range_star (a : A) (ha : p a) : Set.range (cfc a (R := 𝕜)) = elementalStarAlgebra 𝕜 a := by
+  ext x
+  constructor
+  · rintro ⟨f, rfl⟩
+    by_cases hf : ContinuousOn f (spectrum 𝕜 a)
+    · rw [cfc_apply a f]
+
+
+    · sorry --simpa [cfc_apply_of_not_continuousOn a hf] using zero_mem _
+  · sorry
+
+end IsROrC
 
 section Complex
 
