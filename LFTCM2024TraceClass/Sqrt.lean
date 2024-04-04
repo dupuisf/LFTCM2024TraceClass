@@ -1,6 +1,35 @@
 import LFTCM2024TraceClass.ContinuousLinearMap
 import Mathlib.Topology.ContinuousFunction.UniqueCFC
 
+open Algebra in
+theorem _root_.Algebra.adjoin_induction'' {R A : Type*} [CommSemiring R] [Semiring A]
+    [Algebra R A] {s : Set A} {x : A} (hx : x ∈ Algebra.adjoin R s) {p : A → Prop} (mem : ∀ (x : A) (h : x ∈ s), p x)
+    (algebraMap : ∀ (r : R), p (algebraMap R A r))
+    (add : ∀ x ∈ adjoin R s, ∀ y ∈ adjoin R s, p x → p y → p (x + y))
+    (mul : ∀ x ∈ adjoin R s, ∀ y ∈ adjoin R s, p x → p y → p (x * y))
+    : p x := by
+  sorry
+
+
+theorem elementalStarAlgebra.induction_on {R A : Type*} {P : A → Prop} [CommSemiring R] [StarRing R] [TopologicalSpace A]
+    [Semiring A] [StarRing A] [TopologicalSemiring A] [ContinuousStar A] [Algebra R A] [StarModule R A] {x y : A}
+    (hy : y ∈ elementalStarAlgebra R x) (self : P x) (star_self : P (star x))
+    (algebraMap : ∀ r, P (algebraMap R A r))
+    (add : ∀ u ∈ elementalStarAlgebra R x, ∀ v ∈ elementalStarAlgebra R x, P u → P v → P (u + v))
+    (mul : ∀ u ∈ elementalStarAlgebra R x, ∀ v ∈ elementalStarAlgebra R x, P u → P v → P (u * v))
+    (h_closure : ∀ s : Set A, s ⊆ elementalStarAlgebra R x → (∀ u ∈ s, P u) → ∀ v ∈ closure s, P v) : P y := by
+  apply h_closure (StarSubalgebra.adjoin R {x} : Set A) subset_closure (fun y hy ↦ ?_) y hy
+  rw [SetLike.mem_coe, ← StarSubalgebra.mem_toSubalgebra, StarSubalgebra.adjoin_toSubalgebra] at hy
+  apply Algebra.adjoin_induction'' hy
+  · simp only [Set.instInvolutiveStarSet, Set.singleton_union, Set.mem_insert_iff, Set.mem_star,
+      Set.mem_singleton_iff, forall_eq_or_imp]
+    refine ⟨self, fun a ha ↦ ?_⟩
+    rw [star_eq_iff_star_eq] at ha
+    exact ha ▸ star_self
+  · exact algebraMap
+  · exact fun u hu v hv ↦ add u (subset_closure hu) v (subset_closure hv)
+  · exact fun u hu v hv ↦ mul u (subset_closure hu) v (subset_closure hv)
+
 open scoped NNReal
 
 attribute [fun_prop] NNReal.continuous_sqrt
@@ -233,9 +262,9 @@ attribute [aesop safe apply] conjugate_nonneg conjugate_nonneg'
 attribute [aesop unsafe 70% apply] pow_nonneg add_nonneg
 attribute [aesop unsafe 30% apply] sq_nonneg pow_two_mul_nonneg
 
-example {a b : A} (ha : IsSelfAdjoint a) (hb : 0 ≤ b) (n : ℕ) : 0 ≤ a ^ 2 + b ^ n + a ^ (2 * n) + b ^ 2 := by cfc_tac
-
-example (a b c : A) (hb : 0 ≤ 1 + b) : 0 ≤ star a * (1 + (1 + b)) ^ 2 * a + c * star c + sqrt (abs a) := by cfc_tac
+example (a b c : A) (hb : 0 ≤ 1 + b) : 0 ≤ star a * (1 + (1 + b)) ^ 2 * a + c * star c + sqrt (abs a) := by
+  solve_by_elim (config := {maxDepth := 10})
+    [conjugate_nonneg, add_nonneg, pow_nonneg, sq_nonneg, sqrt_nonneg, abs_nonneg, mul_star_self_nonneg, one_nonneg]
 
 -- We'll need to define positive definite elements to deal with negative powers properly
 def rpow (r : ℝ) (a : A) : A := cfc a (NNReal.rpow · r)
@@ -290,6 +319,7 @@ lemma _root_.Polynomial.toContinuousMapOn_X_eq_restrict_id {R : Type*} [Semiring
     (X : R[X]).toContinuousMapOn s = .restrict s (.id R) := by
   ext; simp
 
+#find_home! Polynomial.toContinuousMapOn_X_eq_restrict_id
 variable (𝕜)
 
 theorem cfcHom_range {a : A} (ha : p a) :
@@ -323,40 +353,66 @@ theorem cfc_range {a : A} (ha : p a) : Set.range (cfc a (R := 𝕜)) = (cfcHom h
     congr!
     exact hff'.symm
 
-#eval 1349^2 % 1763
-#eval 385^2 % 1763
-#eval 133^2 % 1763
-#eval 59 ^ 2 % 1763
-#eval 1718^2 % 1763
+variable {𝕜}
 
-def digits : ℕ → List (Fin 2)
-  | 0 => []
-  | n + 1 => n % 2 :: digits (n / 2)
-
-#exit
-
-theorem induction_on (P : A → Prop) {a : A} (ha : p a) (f : C(spectrum 𝕜 a, 𝕜))
-    (self : P a) (star_self : P (star a)) (algebraMap : ∀ r : 𝕜, P (cfcHom ha (algebraMap 𝕜 C(spectrum 𝕜 a, 𝕜) r)))
+theorem induction_on {P : A → Prop} {a : A} (ha : p a) (f : C(spectrum 𝕜 a, 𝕜))
+    (self : P a) (star_self : P (star a)) (algebraMap : ∀ r : 𝕜, P (algebraMap 𝕜 A r))
     (add : ∀ g₁ g₂ : C(spectrum 𝕜 a, 𝕜), P (cfcHom ha g₁) → P (cfcHom ha g₂) → P (cfcHom ha (g₁ + g₂)))
     (mul : ∀ g₁ g₂ : C(spectrum 𝕜 a, 𝕜), P (cfcHom ha g₁) → P (cfcHom ha g₂) → P (cfcHom ha (g₁ * g₂) : A))
     (closure : ∀ s : Set C(spectrum 𝕜 a, 𝕜), (∀ g ∈ s, P (cfcHom ha g)) → ∀ g' ∈ closure s, P (cfcHom ha g')) :
     P (cfcHom ha f) := by
+  have hf : cfcHom ha f ∈ elementalStarAlgebra 𝕜 a := cfcHom_range 𝕜 ha ▸ Set.mem_range_self _
+  apply elementalStarAlgebra.induction_on hf self star_self algebraMap
+  all_goals simp only [← cfcHom_range 𝕜 ha]
+  · rintro - ⟨f, rfl⟩ - ⟨g, rfl⟩ hf hg
+    simpa using add f g hf hg
+  · rintro - ⟨f, rfl⟩ - ⟨g, rfl⟩ hf hg
+    simpa using mul f g hf hg
+  · show ∀ s ⊆ Set.range (cfcHom ha), _
+    simpa only [Set.forall_subset_range_iff, Set.forall_mem_image,
+      (cfcHom_closedEmbedding ha).closure_image_eq] using closure
 
-  sorry
+@[fun_prop]
+lemma cfcHom_continuous {a : A} (ha : p a) : Continuous (cfcHom ha : C(spectrum 𝕜 a, 𝕜) →⋆ₐ[𝕜] A) :=
+  cfcHom_closedEmbedding ha |>.continuous
+
+theorem comm_cfcHom [T2Space A] {a b : A} (ha : p a) (hb₁ : Commute a b)
+    (hb₂ : Commute (star a) b) (f : C(spectrum 𝕜 a, 𝕜)) :
+    Commute (cfcHom ha f) b := by
+  apply induction_on (P := fun x ↦ Commute x b) ha f hb₁ hb₂ (Algebra.commute_algebraMap_left · _)
+  exact fun _ _ ↦ by simpa using Commute.add_left
+  exact fun _ _ ↦ by simpa using Commute.mul_left
+  intro s hs g hg
+  have : s.EqOn (cfcHom ha · * b) (b * cfcHom ha ·) := hs
+  refine this.closure ?_ ?_ hg
+  all_goals fun_prop
+
+theorem comm_cfcHom_of_isSelfAdjoint [T2Space A] (a b : A) (ha : p a)
+    (ha' : IsSelfAdjoint a) (hb : Commute a b) (f : C(spectrum 𝕜 a, 𝕜)) :
+    Commute (cfcHom ha f) b :=
+  comm_cfcHom ha hb (ha'.star_eq.symm ▸ hb) f
+
+-- this is useful so we don't have to do so many stupid case splits.
+lemma cfc_cases (P : A → Prop) (a : A) (f : 𝕜 → 𝕜) (h₀ : P 0)
+    (haf : (hf : ContinuousOn f (spectrum 𝕜 a)) → (ha : p a) → P (cfcHom ha ⟨_, hf.restrict⟩)) :
+    P (cfc a f) := by
+  by_cases h : p a ∧ ContinuousOn f (spectrum 𝕜 a)
+  · rw [cfc_apply a f h.1 h.2]
+    exact haf h.2 h.1
+  · simp only [not_and_or] at h
+    obtain (h | h) := h
+    · rwa [cfc_apply_of_not_predicate _ h]
+    · rwa [cfc_apply_of_not_continuousOn _ h]
+
+theorem comm_cfc [T2Space A] {a b : A} (hb₁ : Commute a b)
+    (hb₂ : Commute (star a) b) (f : 𝕜 → 𝕜) : Commute (cfc a f) b :=
+  cfc_cases (fun x ↦ Commute x b) a f (Commute.zero_left _) fun hf ha ↦ comm_cfcHom ha hb₁ hb₂ ⟨_, hf.restrict⟩
+
+theorem comm_cfc_of_isSelfAdjoint [T2Space A] {a b : A} (ha : IsSelfAdjoint a) (hb₁ : Commute a b)
+    (f : 𝕜 → 𝕜) : Commute (cfc a f) b :=
+  comm_cfc hb₁ (ha.star_eq.symm ▸ hb₁) f
 
 
-#check cfc_apply
--- the range of the continuous functional calculus is the elemental star algebra
-lemma cfc_range_star (a : A) (ha : p a) : Set.range (cfc a (R := 𝕜)) = elementalStarAlgebra 𝕜 a := by
-  ext x
-  constructor
-  · rintro ⟨f, rfl⟩
-    by_cases hf : ContinuousOn f (spectrum 𝕜 a)
-    · rw [cfc_apply a f]
-
-
-    · sorry --simpa [cfc_apply_of_not_continuousOn a hf] using zero_mem _
-  · sorry
 
 end IsROrC
 
